@@ -293,6 +293,12 @@
     flex-shrink:0;
   }
   .speak-btn-sm:hover{ border-color:var(--accent); }
+  .link-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+  }
   .reveal-pron{ font-size:.85rem; color:var(--ink-muted); margin-bottom:6px; }
   .reveal-example{ font-size:.88rem; color:var(--ink-muted); font-style:italic; margin-bottom:6px; }
   .reveal-yourtext{ font-size:.8rem; color:var(--ink-faint); margin-bottom:18px; }
@@ -738,6 +744,7 @@
       html += '<div class="reveal-answer-row">';
       html += '<div class="reveal-answer">'+escapeHtml(item.en)+'</div>';
       html += '<button class="speak-btn" type="button" data-speak="'+escapeHtml(item.en)+'" title="Ouvir pronúncia">🔊</button>';
+      html += '<a class="speak-btn link-btn" href="'+wordRefUrl(item.en)+'" target="_blank" rel="noopener noreferrer" title="Ver no WordReference (abre em nova aba)">📖</a>';
       html += '</div>';
       if(item.pron) html += '<div class="reveal-pron mono">/'+escapeHtml(item.pron.replace(/^\/|\/$/g,''))+'/</div>';
       if(item.example) html += '<div class="reveal-example">'+escapeHtml(item.example)+'</div>';
@@ -772,6 +779,11 @@
       var speakBtn = root.querySelector(".speak-btn");
       if(speakBtn) speakBtn.addEventListener("click", function(){ playPronunciation(item.en); });
     }
+  }
+
+  // ---------- link externo (WordReference) ----------
+  function wordRefUrl(text){
+    return "https://www.wordreference.com/enpt/" + encodeURIComponent((text||"").trim());
   }
 
   // ---------- pronúncia (áudio) ----------
@@ -1107,6 +1119,7 @@
       return '<tr class="'+(isDue?'due':'')+' '+(isRisk?'risk':'')+'">'+
         '<td><div style="display:flex; align-items:center; gap:6px;">'+
           '<button class="speak-btn-sm" data-speak="'+escapeHtml(item.en)+'" title="Ouvir pronúncia">🔊</button>'+
+          '<a class="speak-btn-sm link-btn" href="'+wordRefUrl(item.en)+'" target="_blank" rel="noopener noreferrer" title="Ver no WordReference (abre em nova aba)">📖</a>'+
           '<div>'+escapeHtml(item.en)+(item.pron ? '<div class="mono" style="font-size:.72rem; color:var(--ink-faint);">/'+escapeHtml(item.pron.replace(/^\/|\/$/g,''))+'/</div>' : '')+'</div>'+
         '</div></td>'+
         '<td>'+escapeHtml(item.pt)+'</td>'+
