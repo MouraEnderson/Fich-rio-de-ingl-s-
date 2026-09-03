@@ -1,8 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fichário de Inglês</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -427,8 +422,6 @@
     .stat-tile{ flex:1; min-width:0; }
   }
 </style>
-</head>
-<body>
 
 <div class="wrap">
 
@@ -453,6 +446,20 @@
 
   <!-- ADICIONAR -->
   <section class="view" id="view-adicionar">
+    <div class="panel">
+      <h2>Importar lista</h2>
+      <div class="sub">Cole um JSON no formato <span class="mono">[{"topic","en","pt","example"}, ...]</span> — cada "topic" vira uma aula separada, com os itens já entrando pra revisão hoje. Também aceita subir um arquivo <span class="mono">.json</span>.</div>
+      <textarea id="importText" placeholder='[{"topic":"Rotina","en":"wake up","pt":"acordar","example":"I wake up at 7am."}]' style="width:100%; min-height:110px; font-family:'IBM Plex Mono',monospace; font-size:.8rem; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
+      <div class="actions-row">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="btn btn-primary" id="importBtn" type="button">Importar</button>
+          <label class="btn" for="importFile" style="cursor:pointer;">Subir arquivo .json</label>
+          <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
+        </div>
+        <span class="toast" id="importToast"></span>
+      </div>
+    </div>
+
     <div class="panel">
       <h2>Nova aula</h2>
       <div class="sub">Registre a aula de hoje e adicione o que você viu. Cada item entra pra revisão imediatamente.</div>
@@ -735,7 +742,7 @@
 
   function escapeHtml(s){
     return (s||"").replace(/[&<>"']/g, function(c){
-      return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;"}[c];
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
   }
 
@@ -799,6 +806,90 @@
     setTimeout(function(){ toast.classList.remove("show"); }, 2200);
   });
 
+  // ---------- importar lista ----------
+  function importItems(raw){
+    var toast = document.getElementById("importToast");
+    var data;
+    try{
+      data = JSON.parse(raw);
+    }catch(e){
+      alert("JSON inválido: " + e.message);
+      return;
+    }
+    if(!Array.isArray(data) || data.length === 0){
+      alert("Esperado um array de itens, ex: [{\"topic\":\"...\",\"en\":\"...\",\"pt\":\"...\"}]");
+      return;
+    }
+    var valid = data.filter(function(it){
+      return it && typeof it.en === "string" && it.en.trim() && typeof it.pt === "string" && it.pt.trim();
+    });
+    if(valid.length === 0){
+      alert("Nenhum item válido encontrado (cada item precisa de 'en' e 'pt' preenchidos).");
+      return;
+    }
+
+    var today = todayISO();
+    var lessonByTopic = {};
+    var addedLessons = 0;
+
+    valid.forEach(function(it){
+      var topic = (it.topic || "Importado").toString().trim() || "Importado";
+      if(!lessonByTopic[topic]){
+        var lessonId = uid();
+        state.lessons.push({ id: lessonId, date: today, topic: topic });
+        lessonByTopic[topic] = lessonId;
+        addedLessons++;
+      }
+      state.items.push({
+        id: uid(),
+        en: it.en.trim(),
+        pt: it.pt.trim(),
+        example: (it.example || "").toString().trim(),
+        lessonId: lessonByTopic[topic],
+        addedAt: today,
+        stage: -1, due: today, reps: 0, lapses: 0
+      });
+    });
+
+    state.example = false;
+    save();
+    renderStats();
+    renderItemsTable();
+
+    toast.textContent = valid.length + " item(ns) em " + addedLessons + " aula(s) importados ✓";
+    toast.classList.add("show");
+    setTimeout(function(){ toast.classList.remove("show"); }, 3000);
+
+    document.getElementById("importText").value = "";
+    document.getElementById("importFile").value = "";
+
+    if(data.length > valid.length){
+      alert((data.length - valid.length) + " item(ns) ignorados por faltar 'en' ou 'pt'.");
+    }
+  }
+
+  document.getElementById("importBtn").addEventListener("click", function(){
+    var raw = document.getElementById("importText").value.trim();
+    if(!raw){
+      alert("Cole o JSON no campo de texto, ou use 'Subir arquivo .json'.");
+      return;
+    }
+    importItems(raw);
+  });
+
+  document.getElementById("importFile").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      importItems(ev.target.result);
+    };
+    reader.onerror = function(){
+      alert("Não consegui ler o arquivo.");
+    };
+    reader.readAsText(file);
+  });
+
   // ---------- itens table ----------
   function renderItemsTable(){
     var tbody = document.getElementById("itemsTableBody");
@@ -812,7 +903,7 @@
       var isDue = item.due <= today;
       var isRisk = (item.lapses||0) >= RISK_LAPSES;
       var interval = item.stage >= 0 ? STAGES[item.stage] + "d" : "novo";
-      return '<tr class="'+(isDue?'due':'')+' '+(isRisk?'risk':'')+'" id="item-'+item.id+'" data-id="'+item.id+'">'+
+      return '<tr class="'+(isDue?'due':'')+' '+(isRisk?'risk':'')+'">'+
         '<td>'+escapeHtml(item.en)+'</td>'+
         '<td>'+escapeHtml(item.pt)+'</td>'+
         '<td class="mono">'+fmtBR(item.due)+'</td>'+
@@ -837,5 +928,3 @@
   startSession();
 })();
 </script>
-</body>
-</html>
