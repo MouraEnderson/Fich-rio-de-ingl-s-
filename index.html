@@ -258,6 +258,30 @@
     color:var(--accent);
     margin-bottom:4px;
   }
+  .reveal-answer-row{ display:flex; align-items:center; gap:10px; }
+  .speak-btn{
+    background:var(--accent-soft);
+    border:1px solid var(--border);
+    color:var(--accent);
+    border-radius:99px;
+    width:34px; height:34px;
+    font-size:1rem;
+    line-height:1;
+    flex-shrink:0;
+  }
+  .speak-btn:hover{ border-color:var(--accent); }
+  .speak-btn-sm{
+    background:var(--accent-soft);
+    border:1px solid var(--border);
+    color:var(--accent);
+    border-radius:99px;
+    width:24px; height:24px;
+    font-size:.75rem;
+    line-height:1;
+    flex-shrink:0;
+  }
+  .speak-btn-sm:hover{ border-color:var(--accent); }
+  .reveal-pron{ font-size:.85rem; color:var(--ink-muted); margin-bottom:6px; }
   .reveal-example{ font-size:.88rem; color:var(--ink-muted); font-style:italic; margin-bottom:6px; }
   .reveal-yourtext{ font-size:.8rem; color:var(--ink-faint); margin-bottom:18px; }
   .reveal-yourtext b{ color:var(--ink-muted); font-weight:500; }
@@ -356,7 +380,7 @@
   }
   .row-add-item{
     display:grid;
-    grid-template-columns: 1fr 1fr 1.4fr auto;
+    grid-template-columns: 1fr .8fr 1fr 1.3fr auto;
     gap:8px;
     margin-bottom:8px;
     align-items:center;
@@ -384,7 +408,7 @@
   .row-add-item .del:hover{ color:var(--bad); border-color:var(--bad); }
   .col-labels{
     display:grid;
-    grid-template-columns: 1fr 1fr 1.4fr auto;
+    grid-template-columns: 1fr .8fr 1fr 1.3fr auto;
     gap:8px;
     font-size:.68rem;
     text-transform:uppercase;
@@ -480,7 +504,7 @@
       </div>
 
       <div class="col-labels">
-        <span>Inglês</span><span>Português</span><span>Frase de exemplo (opcional)</span><span></span>
+        <span>Inglês</span><span>Pronúncia (opcional)</span><span>Português</span><span>Frase de exemplo (opcional)</span><span></span>
       </div>
       <div id="itemRows"></div>
       <button class="btn" id="addRowBtn" type="button" style="margin-top:6px;">+ adicionar linha</button>
@@ -685,7 +709,11 @@
       var correct = normalize(userText) === normalize(item.en);
       html += '<div class="reveal">';
       html += '<div class="card-eyebrow">resposta certa</div>';
+      html += '<div class="reveal-answer-row">';
       html += '<div class="reveal-answer">'+escapeHtml(item.en)+'</div>';
+      html += '<button class="speak-btn" type="button" data-speak="'+escapeHtml(item.en)+'" title="Ouvir pronúncia">🔊</button>';
+      html += '</div>';
+      if(item.pron) html += '<div class="reveal-pron mono">/'+escapeHtml(item.pron.replace(/^\/|\/$/g,''))+'/</div>';
       if(item.example) html += '<div class="reveal-example">'+escapeHtml(item.example)+'</div>';
       html += '<div class="reveal-yourtext">você digitou: <b>'+ (userText ? escapeHtml(userText) : '(nada)') +'</b>'+
                (userText ? (correct ? '  · bateu exatamente' : '') : '') + '</div>';
@@ -712,7 +740,50 @@
           applyGrade(item, parseInt(b.dataset.grade,10));
         });
       });
+      var speakBtn = root.querySelector(".speak-btn");
+      if(speakBtn) speakBtn.addEventListener("click", function(){ playPronunciation(item.en); });
     }
+  }
+
+  // ---------- pronúncia (áudio) ----------
+  function speakSynth(text){
+    try{
+      if(!("speechSynthesis" in window)) return false;
+      window.speechSynthesis.cancel();
+      var utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "en-US";
+      utter.rate = 0.9;
+      window.speechSynthesis.speak(utter);
+      return true;
+    }catch(e){
+      console.warn("speechSynthesis falhou", e);
+      return false;
+    }
+  }
+
+  function playPronunciation(text){
+    var isSingleWord = /^[a-zA-Z'-]+$/.test(text.trim());
+    if(!isSingleWord){
+      speakSynth(text);
+      return;
+    }
+    var word = text.trim().toLowerCase();
+    fetch("https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(word))
+      .then(function(r){ if(!r.ok) throw new Error("not found"); return r.json(); })
+      .then(function(data){
+        var audioUrl = null;
+        (data[0] && data[0].phonetics || []).some(function(p){
+          if(p.audio){ audioUrl = p.audio; return true; }
+          return false;
+        });
+        if(audioUrl){
+          var audio = new Audio(audioUrl.startsWith("//") ? "https:" + audioUrl : audioUrl);
+          audio.play().catch(function(){ speakSynth(text); });
+        } else {
+          speakSynth(text);
+        }
+      })
+      .catch(function(){ speakSynth(text); });
   }
 
   function reveal(){
@@ -762,6 +833,7 @@
     row.className = "row-add-item";
     row.innerHTML =
       '<input type="text" class="in-en" placeholder="ex: to bring up">'+
+      '<input type="text" class="in-pron" placeholder="ex: /brin âp/">'+
       '<input type="text" class="in-pt" placeholder="ex: trazer à tona">'+
       '<input type="text" class="in-ex" placeholder="frase de exemplo (opcional)">'+
       '<button type="button" class="del" title="remover linha">✕</button>';
@@ -783,9 +855,10 @@
     var valid = [];
     rows.forEach(function(r){
       var en = r.querySelector(".in-en").value.trim();
+      var pron = r.querySelector(".in-pron").value.trim();
       var pt = r.querySelector(".in-pt").value.trim();
       var ex = r.querySelector(".in-ex").value.trim();
-      if(en && pt) valid.push({en:en, pt:pt, example:ex});
+      if(en && pt) valid.push({en:en, pt:pt, pron:pron, example:ex});
     });
     if(valid.length === 0){
       alert("Preencha inglês e português de pelo menos um item.");
@@ -795,7 +868,7 @@
     state.lessons.push({ id: lessonId, date: date, topic: topic });
     valid.forEach(function(v){
       state.items.push({
-        id: uid(), en: v.en, pt: v.pt, example: v.example,
+        id: uid(), en: v.en, pt: v.pt, pron: v.pron, example: v.example,
         lessonId: lessonId, addedAt: date,
         stage: -1, due: todayISO(), reps: 0, lapses: 0
       });
@@ -866,6 +939,7 @@
         id: uid(),
         en: it.en.trim(),
         pt: it.pt.trim(),
+        pron: (it.pron || "").toString().trim(),
         example: (it.example || "").toString().trim(),
         lessonId: lessonByTopic[topic],
         addedAt: today,
@@ -930,7 +1004,10 @@
       var isRisk = (item.lapses||0) >= RISK_LAPSES;
       var interval = item.stage >= 0 ? STAGES[item.stage] + "d" : "novo";
       return '<tr class="'+(isDue?'due':'')+' '+(isRisk?'risk':'')+'">'+
-        '<td>'+escapeHtml(item.en)+'</td>'+
+        '<td><div style="display:flex; align-items:center; gap:6px;">'+
+          '<button class="speak-btn-sm" data-speak="'+escapeHtml(item.en)+'" title="Ouvir pronúncia">🔊</button>'+
+          '<div>'+escapeHtml(item.en)+(item.pron ? '<div class="mono" style="font-size:.72rem; color:var(--ink-faint);">/'+escapeHtml(item.pron.replace(/^\/|\/$/g,''))+'/</div>' : '')+'</div>'+
+        '</div></td>'+
         '<td>'+escapeHtml(item.pt)+'</td>'+
         '<td class="mono">'+fmtBR(item.due)+'</td>'+
         '<td class="mono">'+interval+'</td>'+
@@ -938,6 +1015,9 @@
         '<td><button class="del-x" data-id="'+item.id+'" title="excluir">✕</button></td>'+
         '</tr>';
     }).join("");
+    tbody.querySelectorAll(".speak-btn-sm").forEach(function(b){
+      b.addEventListener("click", function(){ playPronunciation(b.dataset.speak); });
+    });
     tbody.querySelectorAll(".del-x").forEach(function(b){
       b.addEventListener("click", function(){
         var id = b.dataset.id;
