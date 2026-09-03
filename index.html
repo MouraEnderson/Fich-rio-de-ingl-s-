@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fichário de Inglês</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -492,6 +497,9 @@
     <div class="panel">
       <h2>Todos os itens</h2>
       <div class="sub">Linhas destacadas estão vencidas hoje. O selo vermelho marca itens que travam com frequência (3+ falhas).</div>
+      <div class="actions-row" style="margin-top:0; margin-bottom:14px;">
+        <button class="btn" id="clearAllBtn" type="button" style="color:var(--bad); border-color:var(--bad);">Limpar tudo (apagar todos os itens e aulas)</button>
+      </div>
       <div class="table-scroll">
         <table class="items-table" id="itemsTable">
           <thead>
@@ -831,8 +839,22 @@
     var today = todayISO();
     var lessonByTopic = {};
     var addedLessons = 0;
+    var addedCount = 0;
+    var dupCount = 0;
+
+    var existingKeys = {};
+    state.items.forEach(function(it){
+      existingKeys[normalize(it.en) + "|" + normalize(it.pt)] = true;
+    });
 
     valid.forEach(function(it){
+      var key = normalize(it.en) + "|" + normalize(it.pt);
+      if(existingKeys[key]){
+        dupCount++;
+        return;
+      }
+      existingKeys[key] = true;
+
       var topic = (it.topic || "Importado").toString().trim() || "Importado";
       if(!lessonByTopic[topic]){
         var lessonId = uid();
@@ -849,6 +871,7 @@
         addedAt: today,
         stage: -1, due: today, reps: 0, lapses: 0
       });
+      addedCount++;
     });
 
     state.example = false;
@@ -856,15 +879,18 @@
     renderStats();
     renderItemsTable();
 
-    toast.textContent = valid.length + " item(ns) em " + addedLessons + " aula(s) importados ✓";
+    toast.textContent = addedCount + " novo(s) em " + addedLessons + " aula(s) ✓" + (dupCount ? (" · " + dupCount + " já existiam, ignorados") : "");
     toast.classList.add("show");
-    setTimeout(function(){ toast.classList.remove("show"); }, 3000);
+    setTimeout(function(){ toast.classList.remove("show"); }, 4000);
 
     document.getElementById("importText").value = "";
     document.getElementById("importFile").value = "";
 
-    if(data.length > valid.length){
-      alert((data.length - valid.length) + " item(ns) ignorados por faltar 'en' ou 'pt'.");
+    var invalidCount = data.length - valid.length;
+    if(invalidCount > 0){
+      alert(invalidCount + " item(ns) ignorados por faltar 'en' ou 'pt'." + (dupCount ? (" " + dupCount + " item(ns) já existiam e não foram duplicados.") : ""));
+    } else if(dupCount > 0 && addedCount === 0){
+      alert("Todos os " + dupCount + " itens já existiam — nada novo foi adicionado (proteção contra importar a mesma lista duas vezes).");
     }
   }
 
@@ -923,8 +949,20 @@
     });
   }
 
+  document.getElementById("clearAllBtn").addEventListener("click", function(){
+    var ok = confirm("Isso apaga TODOS os itens e aulas salvos neste navegador (" + state.items.length + " itens). Não tem como desfazer. Confirma?");
+    if(!ok) return;
+    state = { example:false, lessons:[], items:[] };
+    save();
+    renderStats();
+    renderItemsTable();
+    startSession();
+    alert("Tudo limpo. Pode importar de novo, sem duplicar.");
+  });
+
   // ---------- init ----------
   renderStats();
   startSession();
 })();
 </script>
+</html>
