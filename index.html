@@ -808,7 +808,7 @@
 
     html += '<div class="progress-chart-block"><div class="chart-title">Por intervalo de revisão</div>';
     html += '<div class="bar-list">';
-    STAGE_LABELS.forEach(function(lbl, idx){
+    STAGE_LABELS.slice(0, 6).forEach(function(lbl, idx){
       var count = p.stageCounts[idx] || 0;
       var pct = maxStage ? Math.round((count / maxStage) * 100) : 0;
       html += '<div class="bar-row"><span class="bar-label mono">'+lbl+'</span>'+
