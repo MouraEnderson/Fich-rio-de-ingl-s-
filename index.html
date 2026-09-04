@@ -978,28 +978,11 @@
   }
 
   function playPronunciation(text){
-    var isSingleWord = /^[a-zA-Z'-]+$/.test(text.trim());
-    if(!isSingleWord){
-      speakSynth(text);
-      return;
-    }
-    var word = text.trim().toLowerCase();
-    fetch("https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(word))
-      .then(function(r){ if(!r.ok) throw new Error("not found"); return r.json(); })
-      .then(function(data){
-        var audioUrl = null;
-        (data[0] && data[0].phonetics || []).some(function(p){
-          if(p.audio){ audioUrl = p.audio; return true; }
-          return false;
-        });
-        if(audioUrl){
-          var audio = new Audio(audioUrl.startsWith("//") ? "https:" + audioUrl : audioUrl);
-          audio.play().catch(function(){ speakSynth(text); });
-        } else {
-          speakSynth(text);
-        }
-      })
-      .catch(function(){ speakSynth(text); });
+    // Antes buscava áudio nativo em api.dictionaryapi.dev pra palavras únicas,
+    // mas essa chamada não tinha timeout e podia travar quase 1 minuto quando
+    // a API/CDN de áudio respondia devagar. Trocado por voz sintetizada direto
+    // (instantânea, offline) - já era o fallback mesmo, só cortamos o atalho lento.
+    speakSynth(text);
   }
 
   function reveal(){
