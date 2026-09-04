@@ -201,7 +201,14 @@
   .grade-auto.good{ background:var(--good-soft); color:var(--good); }
   .grade-auto.bad{ background:var(--bad-soft); color:var(--bad); }
   .override-link{ display:block; margin-top:2px; margin-bottom:2px; }
-  .card-inner{ padding:12px 20px; }
+  .card-inner{
+    padding:12px 20px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    min-height:300px;
+  }
+  .card-top{ flex-shrink:0; }
   .card-eyebrow{
     font-family:"IBM Plex Mono",monospace;
     font-size:.68rem;
@@ -887,8 +894,10 @@
 
     var html = '<div class="session-progress mono">'+progress+'</div>';
     html += '<div class="'+cardClass+'"><div class="card-inner">';
+    html += '<div class="card-top">';
     html += '<div class="card-eyebrow">produza em inglês, sem consultar nada</div>';
     html += '<div class="prompt-pt">'+escapeHtml(item.pt)+'</div>';
+    html += '</div>';
 
     if(!session.revealed){
       html += '<div class="answer-row">';
