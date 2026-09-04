@@ -224,18 +224,6 @@
     font-style:italic;
     margin-bottom:12px;
   }
-  .hint-listen{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    margin-bottom:10px;
-    padding:5px 10px;
-    border-radius:99px;
-    background:var(--accent-soft);
-    color:var(--accent);
-    font-size:.78rem;
-  }
-  .hint-listen:hover{ background:var(--accent); color:#fff; }
   .answer-row{
     display:flex;
     gap:10px;
@@ -903,9 +891,9 @@
     html += '<div class="prompt-pt">'+escapeHtml(item.pt)+'</div>';
 
     if(!session.revealed){
-      html += '<button class="btn-quiet hint-listen" id="hintListenBtn" type="button">🔊 Ouvir dica (pronúncia em inglês)</button>';
       html += '<div class="answer-row">';
       html += '<input type="text" class="answer-input" id="answerInput" placeholder="digite em inglês..." autocomplete="off" autocapitalize="off" spellcheck="false">';
+      html += '<button class="speak-btn" id="hintListenBtn" type="button" title="Ouvir dica (pronúncia em inglês)">🔊</button>';
       html += '<button class="btn btn-primary" id="checkBtn" type="button">Verificar</button>';
       html += '</div>';
     } else {
